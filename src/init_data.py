@@ -65,7 +65,8 @@ def initialize_sample_data():
         - Communicate findings clearly
         - Escalate if infrastructure issue suspected
         """,
-        priority="High",
+        priority="P1",
+        product="Maximum Security",
         created_by=admin['id'],
         reporter_id=admin2['id'],
         core_engineer_id=engineer1['id']
@@ -98,7 +99,8 @@ def initialize_sample_data():
         - Clear communication with users
         - Escalate if hardware failure detected
         """,
-        priority="Critical",
+        priority="P0",
+        product="VPN Proxy One Pro",
         created_by=admin['id'],
         reporter_id=admin['id'],
         core_engineer_id=engineer2['id']
@@ -134,7 +136,8 @@ def initialize_sample_data():
         - Risk assessment
         - Coordination with stakeholders
         """,
-        priority="Medium",
+        priority="P2",
+        product="Internet Security",
         created_by=admin['id'],
         reporter_id=admin2['id']
         # No engineer assigned initially
@@ -167,7 +170,8 @@ def initialize_sample_data():
         - Communicate status updates
         - Consider escalation if server-side issue
         """,
-        priority="High",
+        priority="P1",
+        product="VPN Proxy One Pro",
         created_by=admin['id'],
         reporter_id=admin['id']
         # No engineer assigned initially

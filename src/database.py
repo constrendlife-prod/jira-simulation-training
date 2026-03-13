@@ -58,7 +58,7 @@ class Database:
                     'Resolved',
                     'Closed'
                 )),
-                priority TEXT NOT NULL CHECK(priority IN ('Low', 'Medium', 'High', 'Critical')),
+                priority TEXT NOT NULL CHECK(priority IN ('P0', 'P1', 'P2', 'P3', 'P4')),
                 reporter_id INTEGER,
                 core_engineer_id INTEGER,
                 rd_assignee_id INTEGER,
@@ -101,6 +101,37 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
+
+        conn.commit()
+        conn.close()
+
+        # Run migrations
+        self.run_migrations()
+
+    def run_migrations(self):
+        """Run database migrations to add new columns."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Check if product column exists
+        cursor.execute("PRAGMA table_info(tickets)")
+        columns = [column[1] for column in cursor.fetchall()]
+
+        # Add product column if it doesn't exist
+        if 'product' not in columns:
+            cursor.execute("ALTER TABLE tickets ADD COLUMN product TEXT DEFAULT 'Not Specified'")
+
+        # Add fundamental_solution column if it doesn't exist
+        if 'fundamental_solution' not in columns:
+            cursor.execute("ALTER TABLE tickets ADD COLUMN fundamental_solution TEXT DEFAULT 'FS:None'")
+
+        # Add resolution_summary column if it doesn't exist
+        if 'resolution_summary' not in columns:
+            cursor.execute("ALTER TABLE tickets ADD COLUMN resolution_summary TEXT")
+
+        # Add fs_details column if it doesn't exist (for storing FS-specific information)
+        if 'fs_details' not in columns:
+            cursor.execute("ALTER TABLE tickets ADD COLUMN fs_details TEXT")
 
         conn.commit()
         conn.close()
@@ -181,7 +212,8 @@ class Database:
         return admins
 
     def create_ticket(self, title: str, description: str, scenario: str,
-                     priority: str, created_by: int, reporter_id: Optional[int] = None,
+                     priority: str, created_by: int, product: str = "Not Specified",
+                     fundamental_solution: str = "FS:None", reporter_id: Optional[int] = None,
                      core_engineer_id: Optional[int] = None, rd_assignee_id: Optional[int] = None) -> str:
         """Create a new ticket and return ticket number."""
         conn = self.get_connection()
@@ -190,7 +222,7 @@ class Database:
         # Generate ticket number
         cursor.execute("SELECT COUNT(*) as count FROM tickets")
         count = cursor.fetchone()['count']
-        ticket_number = f"CORE-{count + 1:04d}"
+        ticket_number = f"CPDT-{count + 1:04d}"
 
         # Determine initial status
         if core_engineer_id:
@@ -202,10 +234,11 @@ class Database:
 
         cursor.execute("""
             INSERT INTO tickets (ticket_number, title, description, scenario, status, priority,
-                               reporter_id, core_engineer_id, rd_assignee_id, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               product, fundamental_solution, reporter_id, core_engineer_id,
+                               rd_assignee_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (ticket_number, title, description, scenario, status, priority,
-              reporter_id, core_engineer_id, rd_assignee_id, created_by))
+              product, fundamental_solution, reporter_id, core_engineer_id, rd_assignee_id, created_by))
 
         ticket_id = cursor.lastrowid
 
@@ -240,6 +273,15 @@ class Database:
         tickets = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return tickets
+
+    def get_ticket_by_id(self, ticket_id: int) -> Dict:
+        """Get a specific ticket by ID."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
 
     def get_tickets_by_user(self, user_id: int) -> List[Dict]:
         """Get tickets assigned to a specific user (as CORE engineer or RD)."""
@@ -340,6 +382,64 @@ class Database:
             INSERT INTO ticket_history (ticket_id, user_id, action, old_status, new_status, comment)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (ticket_id, user_id, "Status changed", old_status, new_status, comment))
+
+        conn.commit()
+        conn.close()
+
+    def resolve_ticket_with_summary(self, ticket_id: int, user_id: int, resolution_summary: str,
+                                   fundamental_solution: str = "FS:None", fs_details: Optional[str] = None):
+        """Resolve a ticket with summary and FS information."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get current status
+        cursor.execute("SELECT status FROM tickets WHERE id = ?", (ticket_id,))
+        result = cursor.fetchone()
+        old_status = result['status'] if result else None
+
+        # Update ticket
+        cursor.execute("""
+            UPDATE tickets
+            SET status = 'Resolved',
+                resolution_summary = ?,
+                fundamental_solution = ?,
+                fs_details = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (resolution_summary, fundamental_solution, fs_details, ticket_id))
+
+        # Add to history
+        cursor.execute("""
+            INSERT INTO ticket_history (ticket_id, user_id, action, old_status, new_status, comment)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (ticket_id, user_id, "Ticket resolved", old_status, "Resolved", resolution_summary))
+
+        conn.commit()
+        conn.close()
+
+    def retract_case(self, ticket_id: int, user_id: int, comment: str):
+        """Retract a case - return it to 'Assigned to CORE' status."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get current status
+        cursor.execute("SELECT status FROM tickets WHERE id = ?", (ticket_id,))
+        result = cursor.fetchone()
+        old_status = result['status'] if result else None
+
+        # Update to Assigned to CORE
+        cursor.execute("""
+            UPDATE tickets
+            SET status = 'Assigned to CORE',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (ticket_id,))
+
+        # Add to history
+        cursor.execute("""
+            INSERT INTO ticket_history (ticket_id, user_id, action, old_status, new_status, comment)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (ticket_id, user_id, "Case retracted", old_status, "Assigned to CORE", comment))
 
         conn.commit()
         conn.close()
