@@ -1,0 +1,48 @@
+# Environment variables
+.env
+.env.local
+
+# Claude memory
+.claude/memory/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Database
+data/tickets.db
+data/*.db
+
+# Streamlit
+.streamlit/

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /mnt/c/Users/joshuaav/OneDrive - TrendMicro/Desktop/Jira - Simulation Program/**)",
+      "Bash(test -f /mnt/c/Users/joshuaav/OneDrive - TrendMicro/Desktop/Jira - Simulation Program/**)",
+      "Read(/mnt/c/Users/joshuaav/OneDrive - TrendMicro/Desktop/Jira - Simulation Program/**)",
+      "Bash(python -c \":*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(pip list)",
+      "Bash(pip install -r requirements.txt)"
+    ]
+  }
+}
