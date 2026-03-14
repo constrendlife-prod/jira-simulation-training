@@ -1,5 +1,6 @@
 """
 Database models and helper functions for the Jira Ticketing Simulation System.
+Supports both SQLite (local development) and Azure Cosmos DB (production).
 """
 import sqlite3
 import os
@@ -8,7 +9,36 @@ from typing import List, Dict, Optional, Tuple
 import hashlib
 
 
-class Database:
+def get_database():
+    """
+    Factory function to get the appropriate database backend.
+    Returns SQLite for local development or Cosmos DB for production.
+    """
+    backend = os.getenv("STORAGE_BACKEND", "sqlite").lower()
+
+    if backend == "cosmosdb":
+        try:
+            from cosmos_db_handler import CosmosDBHandler
+            print("Using Cosmos DB backend")
+            return CosmosDBHandler()
+        except ImportError as e:
+            print(f"Warning: Could not import Cosmos DB handler: {e}")
+            print("Falling back to SQLite")
+            return DatabaseSQLite()
+        except Exception as e:
+            print(f"Warning: Could not initialize Cosmos DB: {e}")
+            print("Falling back to SQLite")
+            return DatabaseSQLite()
+    else:
+        print("Using SQLite backend")
+        return DatabaseSQLite()
+
+
+# Alias for backward compatibility
+Database = get_database
+
+
+class DatabaseSQLite:
     """Database handler for the ticketing system."""
 
     def __init__(self, db_path: str = "data/tickets.db"):
