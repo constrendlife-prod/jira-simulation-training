@@ -3,15 +3,23 @@ Initialize database with sample users and tickets for testing.
 """
 from database import Database
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def initialize_sample_data():
     """Create sample users and tickets for the training system."""
-    # Delete old database to recreate with new schema
-    db_path = "data/tickets.db"
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        print("Old database removed, creating new schema...")
+    # Only delete SQLite database if using SQLite backend
+    storage_backend = os.getenv("STORAGE_BACKEND", "sqlite")
+    if storage_backend == "sqlite":
+        db_path = "data/tickets.db"
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print("Old SQLite database removed, creating new schema...")
+    else:
+        print(f"Using {storage_backend} backend - skipping file deletion...")
 
     db = Database()
 
